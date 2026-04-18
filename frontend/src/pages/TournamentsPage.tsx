@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, Trophy } from 'lucide-react';
+import { Plus, Pencil, Trash2, Trophy, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { tournamentsApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import type { Tournament } from '../types';
+import { useNavigate } from 'react-router-dom';
 
 const STATUS_BADGE: Record<string, string> = {
   upcoming: 'badge badge-blue', ongoing: 'badge badge-red badge-live',
@@ -63,6 +64,7 @@ function TournamentModal({ onClose, existing }: { onClose: () => void; existing?
 export default function TournamentsPage() {
   const { hasRole } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [modal, setModal] = useState<{ open: boolean; tournament?: Tournament }>({ open: false });
 
   const { data: tournaments = [], isLoading } = useQuery({
@@ -109,16 +111,21 @@ export default function TournamentsPage() {
                 <span className="badge badge-purple">{t.tournament_type.toUpperCase()}</span>
                 <span className="badge badge-gray">{t.max_teams} teams</span>
               </div>
-              {canEdit && (
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button className="btn btn-secondary btn-sm" onClick={() => setModal({ open: true, tournament: t })}>
-                    <Pencil size={13} /> Edit
-                  </button>
-                  <button className="btn btn-danger btn-sm" onClick={() => { if (confirm('Delete?')) deleteMutation.mutate(t.id); }}>
-                    <Trash2 size={13} /> Delete
-                  </button>
-                </div>
-              )}
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                {canEdit && (
+                  <>
+                    <button className="btn btn-secondary btn-sm" onClick={() => setModal({ open: true, tournament: t })}>
+                      <Pencil size={13} /> Edit
+                    </button>
+                    <button className="btn btn-danger btn-sm" onClick={() => { if (confirm('Delete?')) deleteMutation.mutate(t.id); }}>
+                      <Trash2 size={13} /> Delete
+                    </button>
+                  </>
+                )}
+                <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/tournaments/${t.id}`)}>
+                  <Eye size={13} /> View
+                </button>
+              </div>
             </div>
           ))}
         </div>

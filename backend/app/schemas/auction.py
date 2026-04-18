@@ -50,7 +50,10 @@ class AuctionItemOut(BaseModel):
     winning_team_id: Optional[str]
     status: AuctionItemStatus
     bid_count: int
+    activated_at: Optional[datetime] = None
+    ends_at: Optional[datetime] = None
     sold_at: Optional[datetime]
+    finalized_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -59,6 +62,15 @@ class AuctionItemOut(BaseModel):
 class PlaceBidRequest(BaseModel):
     amount: float
     team_id: str
+
+
+class ForceSellRequest(BaseModel):
+    team_id: str
+    amount: Optional[float] = None
+
+
+class ResetTimerRequest(BaseModel):
+    seconds: int
 
 
 class BidOut(BaseModel):

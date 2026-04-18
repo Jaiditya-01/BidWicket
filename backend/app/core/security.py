@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any
+import uuid
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -21,15 +22,15 @@ def create_access_token(subject: Any) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
     )
-    payload = {"sub": str(subject), "exp": expire, "type": "access"}
+    payload = {"sub": str(subject), "exp": expire, "type": "access", "jti": uuid.uuid4().hex}
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
-def create_refresh_token(subject: Any) -> str:
+def create_refresh_token(subject: Any, *, jti: str | None = None) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
         days=settings.REFRESH_TOKEN_EXPIRE_DAYS
     )
-    payload = {"sub": str(subject), "exp": expire, "type": "refresh"}
+    payload = {"sub": str(subject), "exp": expire, "type": "refresh", "jti": jti or uuid.uuid4().hex}
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 

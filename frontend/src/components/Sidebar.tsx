@@ -2,11 +2,13 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Trophy, Users, UserCircle,
-  Swords, Gavel, LogOut, Settings
+  Swords, Gavel, LogOut, Settings, Search as SearchIcon, Bell
 } from 'lucide-react';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/search', icon: SearchIcon, label: 'Search' },
+  { to: '/notifications', icon: Bell, label: 'Notifications' },
   { to: '/tournaments', icon: Trophy, label: 'Tournaments' },
   { to: '/teams', icon: Users, label: 'Teams' },
   { to: '/players', icon: UserCircle, label: 'Players' },
@@ -15,7 +17,7 @@ const navItems = [
 ];
 
 export default function Sidebar() {
-  const { user, logout } = useAuth();
+  const { user, logout, hasRole } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => { logout(); navigate('/login'); };
@@ -27,11 +29,6 @@ export default function Sidebar() {
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-logo">
-        <div className="sidebar-logo-icon">🏏</div>
-        <div className="sidebar-logo-text">Bid<span>Wicket</span></div>
-      </div>
-
       <nav className="sidebar-nav">
         <div className="nav-section-label">Main</div>
         {navItems.map(({ to, icon: Icon, label }) => (
@@ -45,6 +42,18 @@ export default function Sidebar() {
             {label}
           </NavLink>
         ))}
+
+        {hasRole('admin') && (
+          <>
+            <div className="nav-section-label" style={{ marginTop: '1rem' }}>Admin</div>
+            <NavLink
+              to="/admin"
+              className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+            >
+              <Settings size={17} /> Admin
+            </NavLink>
+          </>
+        )}
       </nav>
 
       <div className="sidebar-footer">

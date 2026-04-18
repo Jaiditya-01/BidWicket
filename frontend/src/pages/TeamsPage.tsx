@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { teamsApi, tournamentsApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import type { Team, Tournament } from '../types';
+import { useNavigate } from 'react-router-dom';
 
 function TeamModal({ onClose, existing }: { onClose: () => void; existing?: Team }) {
   const qc = useQueryClient();
@@ -49,11 +50,12 @@ function TeamModal({ onClose, existing }: { onClose: () => void; existing?: Team
   );
 }
 
-const fmt = (n: number) => `₹${(n / 100000).toFixed(1)}L`;
+const fmt = (n: number) => n >= 10000000 ? `₹${(n / 10000000).toFixed(2)}Cr` : `₹${(n / 100000).toFixed(2)}L`;
 
 export default function TeamsPage() {
   const { hasRole } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [modal, setModal] = useState<{ open: boolean; team?: Team }>({ open: false });
 
   const { data: teams = [], isLoading } = useQuery({ queryKey: ['teams'], queryFn: () => teamsApi.list().then(r => r.data) });
@@ -92,12 +94,21 @@ export default function TeamsPage() {
                 <span className="badge badge-blue">Remaining {fmt(t.remaining_budget)}</span>
                 <span className="badge badge-gray">{t.players.length} players</span>
               </div>
-              {canEdit && (
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button className="btn btn-secondary btn-sm" onClick={() => setModal({ open: true, team: t })}><Pencil size={13} /> Edit</button>
-                  <button className="btn btn-danger btn-sm" onClick={() => { if (confirm('Delete team?')) deleteMutation.mutate(t.id); }}><Trash2 size={13} /> Delete</button>
-                </div>
-              )}
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                {canEdit && (
+                  <button className="btn btn-secondary btn-sm" onClick={() => setModal({ open: true, team: t })}>
+                    <Pencil size={13} /> Edit
+                  </button>
+                )}
+                {canEdit && (
+                  <button className="btn btn-danger btn-sm" onClick={() => { if (confirm('Delete?')) deleteMutation.mutate(t.id); }}>
+                    <Trash2 size={13} /> Delete
+                  </button>
+                )}
+                <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/teams/${t.id}`)}>
+                  <Eye size={13} /> View
+                </button>
+              </div>
             </div>
           ))}
         </div>

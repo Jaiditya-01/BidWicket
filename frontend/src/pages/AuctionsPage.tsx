@@ -56,7 +56,11 @@ export default function AuctionsPage() {
   const { hasRole } = useAuth();
   const qc = useQueryClient();
   const [showModal, setShowModal] = useState(false);
-  const { data: auctions = [], isLoading } = useQuery({ queryKey: ['auctions'], queryFn: () => auctionsApi.list().then(r => r.data) });
+  const { data: auctions = [], isLoading } = useQuery({
+    queryKey: ['auctions'],
+    queryFn: () => auctionsApi.list().then(r => r.data),
+    refetchInterval: 5000,
+  });
 
   const startMutation = useMutation({
     mutationFn: (id: string) => auctionsApi.update(id, { status: 'live' }),

@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Radio } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { matchesApi, teamsApi, tournamentsApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import type { Match, Team, Tournament } from '../types';
+import { useNavigate } from 'react-router-dom';
 
 const STATUS_BADGE: Record<string, string> = {
   scheduled: 'badge badge-blue', live: 'badge badge-red badge-live',
@@ -65,6 +66,7 @@ function MatchModal({ onClose, existing }: { onClose: () => void; existing?: Mat
 export default function MatchesPage() {
   const { hasRole } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [modal, setModal] = useState<{ open: boolean; match?: Match }>({ open: false });
   const { data: matches = [], isLoading } = useQuery({ queryKey: ['matches'], queryFn: () => matchesApi.list().then(r => r.data) });
   const { data: teams = [] } = useQuery({ queryKey: ['teams'], queryFn: () => teamsApi.list().then(r => r.data) });
@@ -72,6 +74,15 @@ export default function MatchesPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => matchesApi.delete(id),
     onSuccess: () => { toast.success('Deleted'); qc.invalidateQueries({ queryKey: ['matches'] }); },
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) => matchesApi.update(id, { status }),
+    onSuccess: (_d, vars) => {
+      toast.success(vars.status === 'live' ? '🔴 Match is now LIVE!' : vars.status === 'completed' ? '✅ Match completed!' : 'Status updated');
+      qc.invalidateQueries({ queryKey: ['matches'] });
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.detail ?? 'Failed to update status'),
   });
 
   const teamName = (id: string) => teams.find((t: Team) => t.id === id)?.name ?? id.slice(-6);
@@ -89,7 +100,7 @@ export default function MatchesPage() {
       ) : (
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Match</th><th>Venue</th><th>Date</th><th>Status</th><th>Score</th>{canEdit && <th>Actions</th>}</tr></thead>
+            <thead><tr><th>Match</th><th>Venue</th><th>Date</th><th>Status</th><th>Score</th><th>Actions</th></tr></thead>
             <tbody>
               {matches.map((m: Match) => (
                 <tr key={m.id}>
@@ -103,12 +114,31 @@ export default function MatchesPage() {
                     {m.innings1 ? `${m.innings1.runs}/${m.innings1.wickets}` : '—'}
                     {m.innings2 ? ` | ${m.innings2.runs}/${m.innings2.wickets}` : ''}
                   </td>
-                  {canEdit && <td>
+                  <td>
                     <div style={{ display: 'flex', gap: '0.4rem' }}>
-                      <button className="btn btn-secondary btn-sm" onClick={() => setModal({ open: true, match: m })}><Pencil size={12} /></button>
-                      <button className="btn btn-danger btn-sm" onClick={() => { if (confirm('Delete?')) deleteMutation.mutate(m.id); }}><Trash2 size={12} /></button>
+                      {canEdit && (
+                        <>
+                          <button className="btn btn-secondary btn-sm" onClick={() => setModal({ open: true, match: m })}><Pencil size={12} /></button>
+                          <button className="btn btn-danger btn-sm" onClick={() => { if (confirm('Delete?')) deleteMutation.mutate(m.id); }}><Trash2 size={12} /></button>
+                        </>
+                      )}
+                      {canEdit && m.status === 'scheduled' && (
+                        <button
+                          className="btn btn-success btn-sm"
+                          onClick={() => statusMutation.mutate({ id: m.id, status: 'live' })}
+                          disabled={statusMutation.isPending}
+                        >▶ Go Live</button>
+                      )}
+                      {canEdit && m.status === 'live' && (
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => { if (confirm('Mark this match as completed?')) statusMutation.mutate({ id: m.id, status: 'completed' }); }}
+                          disabled={statusMutation.isPending}
+                        >✓ End Match</button>
+                      )}
+                      <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/matches/${m.id}`)}><Radio size={12} /> Live / View</button>
                     </div>
-                  </td>}
+                  </td>
                 </tr>
               ))}
             </tbody>

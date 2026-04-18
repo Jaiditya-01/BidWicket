@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel
 from app.models.tournament import TournamentType, TournamentStatus
 
@@ -40,3 +40,32 @@ class TournamentOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class FixtureGenerationResponse(BaseModel):
+    tournament_id: str
+    created_matches: int
+    match_ids: List[str]
+
+
+class PlayoffsGenerationResponse(BaseModel):
+    tournament_id: str
+    stage: str
+    created_matches: int
+    match_ids: List[str]
+
+
+class PointsTableRow(BaseModel):
+    team_id: str
+    played: int
+    won: int
+    lost: int
+    tied: int
+    no_result: int
+    points: int
+    net_run_rate: float
+
+
+class PointsTableResponse(BaseModel):
+    tournament_id: str
+    rows: List[PointsTableRow]

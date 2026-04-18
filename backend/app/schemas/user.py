@@ -38,3 +38,9 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     roles: Optional[List[str]] = None
     is_active: Optional[bool] = None
+
+
+class UserSelfUpdate(BaseModel):
+    full_name: Optional[str] = None
+    bio: Optional[str] = None
+    photo_url: Optional[str] = None

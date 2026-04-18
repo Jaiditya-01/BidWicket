@@ -45,7 +45,10 @@ class AuctionItem(Document):
     winning_team_id: Optional[str] = None
     status: AuctionItemStatus = AuctionItemStatus.pending
     bid_count: int = 0
+    activated_at: Optional[datetime] = None
+    ends_at: Optional[datetime] = None
     sold_at: Optional[datetime] = None
+    finalized_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

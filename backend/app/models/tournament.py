@@ -9,6 +9,7 @@ from pydantic import Field
 class TournamentType(str, Enum):
     league = "league"
     knockout = "knockout"
+    hybrid = "hybrid"
     t20 = "t20"
     odi = "odi"
     test = "test"

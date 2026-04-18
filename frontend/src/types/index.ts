@@ -16,7 +16,7 @@ export interface TokenResponse {
   token_type: string;
 }
 
-export type TournamentType = 'league' | 'knockout' | 't20' | 'odi' | 'test';
+export type TournamentType = 'league' | 'knockout' | 'hybrid' | 't20' | 'odi' | 'test';
 export type TournamentStatus = 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
 
 export interface Tournament {
@@ -47,6 +47,14 @@ export interface Team {
   created_at: string;
 }
 
+export interface TeamHistoryOut {
+  team_id: string;
+  played: number;
+  won: number;
+  lost: number;
+  tied: number;
+}
+
 export type PlayerRole = 'batsman' | 'bowler' | 'all_rounder' | 'wicket_keeper';
 export type BattingStyle = 'right_hand' | 'left_hand';
 export type BowlingStyle =
@@ -63,6 +71,11 @@ export interface PlayerStats {
   centuries: number;
   half_centuries: number;
   five_wicket_hauls: number;
+}
+
+export interface PlayerStatsOut extends PlayerStats {
+  player_id: string;
+  name: string;
 }
 
 export interface Player {
@@ -83,13 +96,35 @@ export interface Player {
 }
 
 export type MatchStatus = 'scheduled' | 'live' | 'completed' | 'abandoned';
+export type MatchStage = 'league' | 'quarter_final' | 'semi_final' | 'final';
+
+export interface BatterScore {
+  player_id: string;
+  runs: number;
+  balls_faced: number;
+  fours: number;
+  sixes: number;
+  is_out: boolean;
+}
+
+export interface BowlerScore {
+  player_id: string;
+  overs: number;
+  runs_conceded: number;
+  wickets: number;
+  maidens: number;
+}
 
 export interface InningsScore {
-  team_id: string;
+  batting_team_id: string;
+  bowling_team_id?: string;
+  team_id?: string;
   runs: number;
   wickets: number;
   overs: number;
   extras: number;
+  batters: BatterScore[];
+  bowlers: BowlerScore[];
 }
 
 export interface Commentary {
@@ -97,6 +132,8 @@ export interface Commentary {
   ball_description: string;
   runs_scored: number;
   wicket: boolean;
+  batter_id?: string;
+  bowler_id?: string;
   timestamp: string;
 }
 
@@ -107,13 +144,16 @@ export interface Match {
   team2_id: string;
   venue?: string;
   match_date?: string;
-  status: MatchStatus;
+  stage: string;
+  status: string;
   toss_winner_id?: string;
   toss_decision?: string;
+  current_innings: number;
   innings1?: InningsScore;
   innings2?: InningsScore;
   winner_id?: string;
   result_description?: string;
+  highlights_url?: string;
   commentary: Commentary[];
   created_at: string;
 }
@@ -144,7 +184,48 @@ export interface AuctionItem {
   winning_team_id?: string;
   status: AuctionItemStatus;
   bid_count: number;
+  activated_at?: string;
+  ends_at?: string;
   sold_at?: string;
+  finalized_at?: string;
+}
+
+export type NotificationType =
+  | 'auction_start'
+  | 'bid_placed'
+  | 'player_sold'
+  | 'outbid'
+  | 'match_start'
+  | 'match_result'
+  | 'system';
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  notification_type: NotificationType;
+  title: string;
+  message: string;
+  is_read: boolean;
+  related_id?: string;
+  created_at: string;
+}
+
+export interface SearchResult {
+  entity: string;
+  id: string;
+  title: string;
+  subtitle?: string;
+}
+
+export interface AdminOverview {
+  users: number;
+  tournaments: number;
+  teams: number;
+  players: number;
+  matches: number;
+  auctions: number;
+  auction_items: number;
+  bids: number;
 }
 
 export interface Bid {
@@ -161,9 +242,13 @@ export interface Bid {
 // WebSocket event shapes
 export type WsEvent =
   | { type: 'new_bid'; data: { auction_item_id: string; amount: number; bidder_id: string; team_id: string; bid_count: number } }
-  | { type: 'item_sold'; data: { auction_item_id: string; player_id: string; sold_price: number; winning_team_id: string } }
-  | { type: 'item_unsold'; data: { auction_item_id: string } }
+  | { type: 'timer_tick'; data: { auction_item_id: string; remaining_seconds: number; ends_at: string } }
+  | { type: 'item_sold'; data: { auction_item_id: string; player_id: string; sold_price: number; winning_team_id: string; reason?: string } }
+  | { type: 'item_unsold'; data: { auction_item_id: string; reason?: string } }
   | { type: 'item_activated'; item_id: string; base_price: number; player_id: string }
   | { type: 'auction_status'; status: AuctionStatus }
+  | { type: 'auction_finalized'; auction_id: string }
+  | { type: 'state_update'; data: { auction_item_id: string; status: 'sold' | 'unsold' } }
   | { type: 'score_update'; data: Match }
-  | { type: 'commentary'; data: Commentary };
+  | { type: 'commentary_update'; data: Commentary }
+  | { type: 'wicket_update'; data: { match_id: string; over: number; description: string } };

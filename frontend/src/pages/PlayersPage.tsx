@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { playersApi } from '../services/api';
+import { playersApi, teamsApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import type { Player } from '../types';
+import type { Player, Team } from '../types';
+import { useNavigate } from 'react-router-dom';
 
 const ROLE_COLORS: Record<string, string> = {
   batsman: 'badge-blue', bowler: 'badge-red', all_rounder: 'badge-purple', wicket_keeper: 'badge-yellow',
@@ -62,18 +63,21 @@ function PlayerModal({ onClose, existing }: { onClose: () => void; existing?: Pl
 export default function PlayersPage() {
   const { hasRole } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [modal, setModal] = useState<{ open: boolean; player?: Player }>({ open: false });
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('');
 
   const { data: players = [], isLoading } = useQuery({ queryKey: ['players'], queryFn: () => playersApi.list().then(r => r.data) });
+  const { data: teams = [] } = useQuery<Team[]>({ queryKey: ['teams'], queryFn: () => teamsApi.list().then(r => r.data) });
+  const teamMap = Object.fromEntries((teams as Team[]).map((t: Team) => [t.id, t.name]));
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => playersApi.delete(id),
     onSuccess: () => { toast.success('Deleted'); qc.invalidateQueries({ queryKey: ['players'] }); },
   });
 
-  const canEdit = hasRole('admin', 'organizer');
+  const canEdit = hasRole('admin', 'organizer', 'team_owner');
 
   const filtered = players.filter((p: Player) => {
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.country.toLowerCase().includes(search.toLowerCase());
@@ -106,7 +110,7 @@ export default function PlayersPage() {
             <thead><tr>
               <th>Player</th><th>Country</th><th>Role</th><th>Base Price</th>
               <th>Matches</th><th>Runs</th><th>Wickets</th><th>Status</th>
-              {canEdit && <th>Actions</th>}
+              <th>Actions</th>
             </tr></thead>
             <tbody>
               {filtered.length === 0 ? (
@@ -120,13 +124,28 @@ export default function PlayersPage() {
                   <td>{p.stats.matches}</td>
                   <td>{p.stats.runs}</td>
                   <td>{p.stats.wickets}</td>
-                  <td><span className={p.is_available ? 'badge badge-green' : 'badge badge-gray'}>{p.is_available ? 'Available' : 'Sold'}</span></td>
-                  {canEdit && <td>
+                  <td>
+                    {p.is_available
+                      ? <span className="badge badge-green">Available</span>
+                      : <>
+                          <span className="badge badge-gray">Sold</span>
+                          {p.team_id && teamMap[p.team_id] && (
+                            <div className="text-muted text-sm" style={{ marginTop: '0.2rem' }}>{teamMap[p.team_id]}</div>
+                          )}
+                        </>
+                    }
+                  </td>
+                  <td>
                     <div style={{ display: 'flex', gap: '0.4rem' }}>
-                      <button className="btn btn-secondary btn-sm" onClick={() => setModal({ open: true, player: p })}><Pencil size={12} /></button>
-                      <button className="btn btn-danger btn-sm" onClick={() => { if (confirm('Delete?')) deleteMutation.mutate(p.id); }}><Trash2 size={12} /></button>
+                      {canEdit && (
+                        <>
+                          <button className="btn btn-secondary btn-sm" onClick={() => setModal({ open: true, player: p })}><Pencil size={12} /></button>
+                          <button className="btn btn-danger btn-sm" onClick={() => { if (confirm('Delete?')) deleteMutation.mutate(p.id); }}><Trash2 size={12} /></button>
+                        </>
+                      )}
+                      <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/players/${p.id}`)}><Eye size={12} /></button>
                     </div>
-                  </td>}
+                  </td>
                 </tr>
               ))}
             </tbody>

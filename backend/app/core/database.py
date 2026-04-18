@@ -8,6 +8,9 @@ async def init_db():
     """Initialize Motor client and Beanie ODM with all document models."""
     # Import here to avoid circular imports
     from app.models.user import User
+    from app.models.refresh_session import RefreshSession
+    from app.models.auth_tokens import EmailVerificationToken, PasswordResetToken
+    from app.models.activity_log import ActivityLog
     from app.models.tournament import Tournament
     from app.models.team import Team
     from app.models.player import Player
@@ -22,6 +25,10 @@ async def init_db():
         database=db,
         document_models=[
             User,
+            RefreshSession,
+            EmailVerificationToken,
+            PasswordResetToken,
+            ActivityLog,
             Tournament,
             Team,
             Player,

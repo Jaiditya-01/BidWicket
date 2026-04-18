@@ -1,0 +1,284 @@
+﻿[36mvite v8.0.8 [32mbuilding client environment for production...[36m[39m
+[2K
+transforming...Γ£ô 2412 modules transformed.
+rendering chunks...
+node.exe : [31mΓ£ù[39m 
+Build failed in 692ms
+At C:\Program 
+Files\nodejs\npx.ps1:29 
+char:3
++   & $NODE_EXE 
+$NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: (  
+  [31mΓ£ù[39m Build fa   
+ iled in 692ms:String)    
+ [], RemoteException
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+[31merror during build:
+[31mBuild failed with 4 
+errors:
+
+[31m[MISSING_EXPORT] 
+Error:[0m "Match" is not 
+exported by 
+"src/types/index.ts".
+   [38;5;246mΓò¡[0m[38;
+5;246mΓöÇ[0m[38;5;246m[
+[0m src/pages/LiveMatchPag
+e.tsx:6:10 
+[38;5;246m][0m
+   [38;5;246mΓöé[0m
+ [38;5;246m6 Γöé[0m [38
+;5;249mi[0m[38;5;249mm[
+0m[38;5;249mp[0m[38;5;2
+49mo[0m[38;5;249mr[0m[
+38;5;249mt[0m[38;5;249m 
+[0m[38;5;249m{[0m[38;5
+;249m [0mMatch[38;5;249m
+,[0m[38;5;249m [0m[38;
+5;249mT[0m[38;5;249me[0
+m[38;5;249ma[0m[38;5;24
+9mm[0m[38;5;249m,[0m[3
+8;5;249m [0m[38;5;249mW
+[0m[38;5;249ms[0m[38;5;
+249mE[0m[38;5;249mv[0m
+[38;5;249me[0m[38;5;249m
+n[0m[38;5;249mt[0m[38;
+5;249m,[0m[38;5;249m [0
+m[38;5;249mC[0m[38;5;24
+9mo[0m[38;5;249mm[0m[3
+8;5;249mm[0m[38;5;249me
+[0m[38;5;249mn[0m[38;5;
+249mt[0m[38;5;249ma[0m
+[38;5;249mr[0m[38;5;249m
+y[0m[38;5;249m [0m[38;
+5;249m}[0m[38;5;249m [0
+m[38;5;249mf[0m[38;5;24
+9mr[0m[38;5;249mo[0m[3
+8;5;249mm[0m[38;5;249m 
+[0m[38;5;249m"[0m[38;5;
+249m.[0m[38;5;249m.[0m
+[38;5;249m/[0m[38;5;249m
+t[0m[38;5;249my[0m[38;
+5;249mp[0m[38;5;249me[0
+m[38;5;249ms[0m[38;5;24
+9m"[0m[38;5;249m;[0m
+ [38;5;240m  Γöé[0m     
+     ΓöÇΓöÇΓö¼ΓöÇΓöÇ  
+ [38;5;240m  Γöé[0m     
+       Γò░ΓöÇΓöÇΓöÇΓöÇ 
+Missing export
+[38;5;246mΓöÇΓöÇΓöÇΓò»[0
+m
+
+[31m[MISSING_EXPORT] 
+Error:[0m "Team" is not 
+exported by 
+"src/types/index.ts".
+   [38;5;246mΓò¡[0m[38;
+5;246mΓöÇ[0m[38;5;246m[
+[0m src/pages/LiveMatchPag
+e.tsx:6:17 
+[38;5;246m][0m
+   [38;5;246mΓöé[0m
+ [38;5;246m6 Γöé[0m [38
+;5;249mi[0m[38;5;249mm[
+0m[38;5;249mp[0m[38;5;2
+49mo[0m[38;5;249mr[0m[
+38;5;249mt[0m[38;5;249m 
+[0m[38;5;249m{[0m[38;5
+;249m [0m[38;5;249mM[0m
+[38;5;249ma[0m[38;5;249
+mt[0m[38;5;249mc[0m[38
+;5;249mh[0m[38;5;249m,[
+0m[38;5;249m [0mTeam[38
+;5;249m,[0m[38;5;249m [
+0m[38;5;249mW[0m[38;5;2
+49ms[0m[38;5;249mE[0m[
+38;5;249mv[0m[38;5;249me
+[0m[38;5;249mn[0m[38;5
+;249mt[0m[38;5;249m,[0m
+[38;5;249m [0m[38;5;249
+mC[0m[38;5;249mo[0m[38
+;5;249mm[0m[38;5;249mm[
+0m[38;5;249me[0m[38;5;2
+49mn[0m[38;5;249mt[0m[
+38;5;249ma[0m[38;5;249mr
+[0m[38;5;249my[0m[38;5
+;249m [0m[38;5;249m}[0m
+[38;5;249m [0m[38;5;249
+mf[0m[38;5;249mr[0m[38
+;5;249mo[0m[38;5;249mm[
+0m[38;5;249m [0m[38;5;2
+49m"[0m[38;5;249m.[0m[
+38;5;249m.[0m[38;5;249m/
+[0m[38;5;249mt[0m[38;5
+;249my[0m[38;5;249mp[0m
+[38;5;249me[0m[38;5;249
+ms[0m[38;5;249m"[0m[38
+;5;249m;[0m
+ [38;5;240m  Γöé[0m     
+            ΓöÇΓöÇΓö¼ΓöÇ  
+ [38;5;240m  Γöé[0m     
+              
+Γò░ΓöÇΓöÇΓöÇ Missing 
+export
+[38;5;246mΓöÇΓöÇΓöÇΓò»[0
+m
+
+[31m[MISSING_EXPORT] 
+Error:[0m "WsEvent" is 
+not exported by 
+"src/types/index.ts".
+   [38;5;246mΓò¡[0m[38;
+5;246mΓöÇ[0m[38;5;246m[
+[0m src/pages/LiveMatchPag
+e.tsx:6:23 
+[38;5;246m][0m
+   [38;5;246mΓöé[0m
+ [38;5;246m6 Γöé[0m [38
+;5;249mi[0m[38;5;249mm[
+0m[38;5;249mp[0m[38;5;2
+49mo[0m[38;5;249mr[0m[
+38;5;249mt[0m[38;5;249m 
+[0m[38;5;249m{[0m[38;5
+;249m [0m[38;5;249mM[0m
+[38;5;249ma[0m[38;5;249
+mt[0m[38;5;249mc[0m[38
+;5;249mh[0m[38;5;249m,[
+0m[38;5;249m [0m[38;5;2
+49mT[0m[38;5;249me[0m[
+38;5;249ma[0m[38;5;249mm
+[0m[38;5;249m,[0m[38;5
+;249m [0mWsEvent[38;5;24
+9m,[0m[38;5;249m [0m[3
+8;5;249mC[0m[38;5;249mo
+[0m[38;5;249mm[0m[38;5;
+249mm[0m[38;5;249me[0m
+[38;5;249mn[0m[38;5;249m
+t[0m[38;5;249ma[0m[38;
+5;249mr[0m[38;5;249my[0
+m[38;5;249m [0m[38;5;24
+9m}[0m[38;5;249m [0m[3
+8;5;249mf[0m[38;5;249mr
+[0m[38;5;249mo[0m[38;5;
+249mm[0m[38;5;249m [0m
+[38;5;249m"[0m[38;5;249m
+.[0m[38;5;249m.[0m[38;
+5;249m/[0m[38;5;249mt[0
+m[38;5;249my[0m[38;5;24
+9mp[0m[38;5;249me[0m[3
+8;5;249ms[0m[38;5;249m"
+[0m[38;5;249m;[0m
+ [38;5;240m  Γöé[0m     
+                  
+ΓöÇΓöÇΓöÇΓö¼ΓöÇΓöÇΓöÇ  
+ [38;5;240m  Γöé[0m     
+                     
+Γò░ΓöÇΓöÇΓöÇΓöÇΓöÇ 
+Missing export
+[38;5;246mΓöÇΓöÇΓöÇΓò»[0
+m
+
+[31m[MISSING_EXPORT] 
+Error:[0m "Commentary" 
+is not exported by 
+"src/types/index.ts".
+   [38;5;246mΓò¡[0m[38;
+5;246mΓöÇ[0m[38;5;246m[
+[0m src/pages/LiveMatchPag
+e.tsx:6:32 
+[38;5;246m][0m
+   [38;5;246mΓöé[0m
+ [38;5;246m6 Γöé[0m [38
+;5;249mi[0m[38;5;249mm[
+0m[38;5;249mp[0m[38;5;2
+49mo[0m[38;5;249mr[0m[
+38;5;249mt[0m[38;5;249m 
+[0m[38;5;249m{[0m[38;5
+;249m [0m[38;5;249mM[0m
+[38;5;249ma[0m[38;5;249
+mt[0m[38;5;249mc[0m[38
+;5;249mh[0m[38;5;249m,[
+0m[38;5;249m [0m[38;5;2
+49mT[0m[38;5;249me[0m[
+38;5;249ma[0m[38;5;249mm
+[0m[38;5;249m,[0m[38;5
+;249m [0m[38;5;249mW[0m
+[38;5;249ms[0m[38;5;249
+mE[0m[38;5;249mv[0m[38
+;5;249me[0m[38;5;249mn[
+0m[38;5;249mt[0m[38;5;2
+49m,[0m[38;5;249m 
+[0mCommentary[38;5;249m 
+[0m[38;5;249m}[0m[38;5
+;249m [0m[38;5;249mf[0m
+[38;5;249mr[0m[38;5;249
+mo[0m[38;5;249mm[0m[38
+;5;249m [0m[38;5;249m"[
+0m[38;5;249m.[0m[38;5;2
+49m.[0m[38;5;249m/[0m[
+38;5;249mt[0m[38;5;249my
+[0m[38;5;249mp[0m[38;5
+;249me[0m[38;5;249ms[0m
+[38;5;249m"[0m[38;5;249
+m;[0m
+ [38;5;240m  Γöé[0m     
+                          
+ ΓöÇΓöÇΓöÇΓöÇΓöÇΓö¼ΓöÇΓöÇΓ
+öÇΓöÇ  
+ [38;5;240m  Γöé[0m     
+                          
+      
+Γò░ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ 
+Missing export
+[38;5;246mΓöÇΓöÇΓöÇΓò»[0
+m
+[31m
+    at aggregateBindingErr
+orsIntoJsError (file:///D:
+/Projects/BidWicket/fronte
+nd/node_modules/rolldown/d
+ist/shared/error-w0u7biK-.
+mjs:48:18)
+    at 
+unwrapBindingResult (file:
+///D:/Projects/BidWicket/f
+rontend/node_modules/rolld
+own/dist/shared/error-w0u7
+biK-.mjs:18:128)
+    at #build (file:///D:/
+Projects/BidWicket/fronten
+d/node_modules/rolldown/di
+st/shared/rolldown-build-D
+tGk-m96.mjs:3313:34)
+    at async 
+buildEnvironment (file:///
+D:/Projects/BidWicket/fron
+tend/node_modules/vite/dis
+t/node/chunks/node.js:3295
+4:64)
+    at async Object.build 
+(file:///D:/Projects/BidWi
+cket/frontend/node_modules
+/vite/dist/node/chunks/nod
+e.js:33376:19)
+    at async 
+Object.buildApp (file:///D
+:/Projects/BidWicket/front
+end/node_modules/vite/dist
+/node/chunks/node.js:33373
+:153)
+    at async 
+CAC.<anonymous> (file:///D
+:/Projects/BidWicket/front
+end/node_modules/vite/dist
+/node/cli.js:778:3) {
+  errors: [Getter/Setter]
+}[39m

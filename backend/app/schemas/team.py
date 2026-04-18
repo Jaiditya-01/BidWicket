@@ -35,3 +35,11 @@ class TeamOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class TeamHistoryOut(BaseModel):
+    team_id: str
+    played: int
+    won: int
+    lost: int
+    tied: int

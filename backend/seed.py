@@ -52,8 +52,8 @@ async def seed():
     admin = User(email="admin@bidwicket.com", hashed_password=pwd_context.hash("password"), full_name="Admin User", roles=["admin", "organizer", "team_owner"], is_active=True, is_verified=True)
     await admin.insert()
     
-    owner1 = User(email="csk@bidwicket.com", hashed_password=pwd_context.hash("password"), full_name="CSK Owner", roles=["team_owner"], is_active=True)
-    owner2 = User(email="mi@bidwicket.com", hashed_password=pwd_context.hash("password"), full_name="MI Owner", roles=["team_owner"], is_active=True)
+    owner1 = User(email="csk@bidwicket.com", hashed_password=pwd_context.hash("password"), full_name="CSK Owner", roles=["team_owner"], is_active=True, is_verified=True)
+    owner2 = User(email="mi@bidwicket.com", hashed_password=pwd_context.hash("password"), full_name="MI Owner", roles=["team_owner"], is_active=True, is_verified=True)
     await owner1.insert()
     await owner2.insert()
 

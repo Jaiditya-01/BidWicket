@@ -2,10 +2,12 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.core.config import settings
 from app.core.database import init_db
 from app.api.routes import auth, users, tournaments, teams, players, matches, auctions
+from app.api.routes import notifications, search, admin
 
 
 @asynccontextmanager
@@ -21,10 +23,27 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+@app.middleware("http")
+async def security_headers_middleware(request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "same-origin")
+    response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+    return response
+
+
+if settings.ENVIRONMENT != "development":
+    allowed_hosts = [h.strip() for h in settings.ALLOWED_HOSTS.split(",") if h.strip()]
+    if allowed_hosts:
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
+
 # ── CORS ───────────────────────────────────────────────────────────────────────
+origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -40,6 +59,9 @@ app.include_router(teams.router, prefix=API_PREFIX)
 app.include_router(players.router, prefix=API_PREFIX)
 app.include_router(matches.router, prefix=API_PREFIX)
 app.include_router(auctions.router, prefix=API_PREFIX)
+app.include_router(notifications.router, prefix=API_PREFIX)
+app.include_router(search.router, prefix=API_PREFIX)
+app.include_router(admin.router, prefix=API_PREFIX)
 
 
 @app.get("/health", tags=["Health"])

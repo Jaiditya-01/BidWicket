@@ -49,3 +49,20 @@ class PlayerOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class PlayerStatsOut(BaseModel):
+    player_id: str
+    name: str
+    matches: int
+    runs: int
+    wickets: int
+    average: float
+    strike_rate: float
+    economy_rate: float
+    centuries: int
+    half_centuries: int
+    five_wicket_hauls: int
+
+    class Config:
+        from_attributes = True
