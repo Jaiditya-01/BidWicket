@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     SMTP_USE_SSL: bool = False
     EMAIL_FROM: str = "no-reply@bidwicket.local"
 
+    GEMINI_API_KEY: str | None = None
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 

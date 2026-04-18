@@ -95,6 +95,7 @@ export const matchesApi = {
   get: (id: string) => api.get(`/matches/${id}`),
   update: (id: string, body: object) => api.patch(`/matches/${id}`, body),
   addCommentary: (id: string, body: object) => api.post(`/matches/${id}/commentary`, body),
+  generateAiCommentary: (id: string, body: object) => api.post(`/matches/${id}/generate-ai-commentary`, body),
   delete: (id: string) => api.delete(`/matches/${id}`),
 };
 

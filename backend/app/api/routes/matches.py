@@ -6,7 +6,7 @@ from app.api.deps import CurrentUser, OrganizerUser
 from app.models.match import Match, MatchStatus, Commentary
 from app.models.notification import NotificationType
 from app.models.team import Team
-from app.schemas.match import MatchCreate, MatchUpdate, MatchOut, CommentaryCreate
+from app.schemas.match import MatchCreate, MatchUpdate, MatchOut, CommentaryCreate, AIGenerationRequest
 from app.services.notification_service import notification_service
 from app.websockets.connection_manager import match_manager
 from starlette.concurrency import run_in_threadpool
@@ -251,6 +251,114 @@ async def add_commentary(match_id: str, body: CommentaryCreate, current_user: Or
         await match_manager.broadcast(match_id, wicket_payload)
 
     return _out(m)
+
+
+@router.post("/{match_id}/generate-ai-commentary")
+async def generate_ai_commentary(match_id: str, body: AIGenerationRequest, current_user: OrganizerUser):
+    import random
+    
+    def generate_local_commentary(body):
+        """Smart local commentary generator — no API needed, works instantly."""
+        batter = body.batter_name
+        bowler = body.bowler_name
+        batting_team = body.batting_team or "the batting side"
+        
+        if body.is_wicket:
+            templates = [
+                f"OUT! {bowler} strikes! {batter} has to walk back to the pavilion. What a delivery!",
+                f"WICKET! {bowler} has done it! {batter} is gone! The fielding side erupts in celebration!",
+                f"Gone! {batter} couldn't handle that one from {bowler}. A crucial breakthrough!",
+                f"That's the end of {batter}! {bowler} pumps the fist — what a moment in this match!",
+                f"TIMBER! {bowler} sends {batter} packing! The crowd goes absolutely wild!",
+                f"Edged and taken! {batter} departs as {bowler} picks up another scalp!",
+            ]
+        elif body.runs == 6:
+            templates = [
+                f"SIX! {batter} launches it into the stands! {bowler} can only watch it sail away!",
+                f"MASSIVE! That's gone all the way! {batter} sends it into orbit against {bowler}!",
+                f"Into the crowd! {batter} smashes {bowler} for a monster six! What a shot!",
+                f"That's HUGE from {batter}! Picks up {bowler} and deposits it over the boundary!",
+                f"Maximum! {batter} clears the ropes with absolute authority off {bowler}!",
+            ]
+        elif body.runs == 4:
+            templates = [
+                f"FOUR! {batter} finds the gap beautifully! {bowler} is under pressure now!",
+                f"Cracking shot! {batter} drives {bowler} through the covers for a boundary!",
+                f"That races away to the fence! {batter} is timing the ball superbly against {bowler}!",
+                f"BOUNDARY! {batter} flicks it off the pads, no stopping that one from {bowler}!",
+                f"Exquisite! {batter} punches {bowler} through the gap for four more!",
+            ]
+        elif body.runs == 0:
+            templates = [
+                f"Dot ball! {bowler} keeps it tight, {batter} defends solidly. Building pressure!",
+                f"No run! {bowler} bowls a beauty, {batter} can't get it away. Terrific bowling!",
+                f"Nothing doing! {bowler} is on the money, {batter} watchfully blocks it out.",
+                f"Tight from {bowler}! {batter} respects the good length. That's disciplined cricket.",
+                f"Beaten! {bowler} gets one past the outside edge of {batter}! What a delivery!",
+            ]
+        elif body.runs == 1:
+            templates = [
+                f"Single taken! {batter} nudges {bowler} into the gap and rotates the strike.",
+                f"Smart cricket from {batter}, works it off {bowler} for a quick single.",
+                f"{batter} dabs it to the off side for one. Keeping the scoreboard ticking against {bowler}.",
+                f"Just the one. {batter} pushes {bowler} gently and scampers through for a single.",
+            ]
+        elif body.runs == 2:
+            templates = [
+                f"Two runs! {batter} punches {bowler} into the gap and comes back for the second!",
+                f"Good running! {batter} finds the gap off {bowler} and they pick up a couple.",
+                f"Well played! {batter} places it neatly and the batters run hard for two.",
+            ]
+        elif body.runs == 3:
+            templates = [
+                f"Three runs! {batter} drives it deep and they run hard! Excellent placement against {bowler}!",
+                f"Superb running between the wickets! {batter} gets three off {bowler}.",
+            ]
+        else:
+            templates = [
+                f"{batter} scores {body.runs} off {bowler}! Great batting from {batting_team}!",
+                f"{body.runs} runs! {batter} is looking dangerous out there against {bowler}!",
+            ]
+        
+        return random.choice(templates)
+    
+    try:
+        english_text = None
+        
+        # Try Gemini first (optional enhancement)
+        if settings.GEMINI_API_KEY:
+            try:
+                import google.generativeai as genai
+                genai.configure(api_key=settings.GEMINI_API_KEY)
+                
+                prompt = (
+                    f"You are a passionate cricket commentator. Generate exactly 1 or 2 short, thrilling sentences of live commentary for this ball.\n"
+                    f"Context: {body.batting_team} is batting, {body.bowling_team} is bowling.\n"
+                    f"Over: {body.over}, Bowler: {body.bowler_name}, Batter: {body.batter_name}\n"
+                    f"Runs: {body.runs}, Wicket: {'Yes' if body.is_wicket else 'No'}\n"
+                    f"Only return the commentary string, nothing else."
+                )
+                
+                model = genai.GenerativeModel('gemini-2.0-flash-lite')
+                response = model.generate_content(prompt)
+                english_text = response.text.strip()
+            except Exception:
+                pass  # Silently fall back to local generator
+        
+        # Fallback to local smart generator if Gemini failed or quota exceeded
+        if not english_text:
+            english_text = generate_local_commentary(body)
+        
+        # Free translation — no API key, no quota, works forever
+        from deep_translator import GoogleTranslator
+        hindi_text = GoogleTranslator(source='en', target='hi').translate(english_text)
+        
+        return {
+            "commentary": english_text,
+            "hindi_commentary": hindi_text,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.delete("/{match_id}", status_code=status.HTTP_204_NO_CONTENT)

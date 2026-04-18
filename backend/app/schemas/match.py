@@ -38,6 +38,16 @@ class CommentaryCreate(BaseModel):
     bowler_id: Optional[str] = None
 
 
+class AIGenerationRequest(BaseModel):
+    batting_team: str
+    bowling_team: str
+    batter_name: str
+    bowler_name: str
+    runs: int
+    is_wicket: bool
+    over: float
+
+
 class MatchOut(BaseModel):
     id: str
     tournament_id: str

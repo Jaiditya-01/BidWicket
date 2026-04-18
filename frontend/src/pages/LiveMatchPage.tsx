@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { matchesApi, teamsApi, playersApi } from '../services/api';
 import type { Match, Team, Player, WsEvent, Commentary } from '../types';
-import { Radio, Repeat, User } from 'lucide-react';
+import { Radio, Repeat, User, Sparkles, Volume2, VolumeX } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useAuth } from '../context/AuthContext';
 import { PageSkeleton } from '../components/Skeleton';
@@ -23,6 +23,7 @@ export default function LiveMatchPage() {
   const { hasRole } = useAuth();
 
   const [liveWicket, setLiveWicket] = useState<string | null>(null);
+  const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [ballDesc, setBallDesc] = useState('');
   const [runs, setRuns] = useState(0);
   const [isWicket, setIsWicket] = useState(false);
@@ -59,6 +60,32 @@ export default function LiveMatchPage() {
     enabled: !!match?.team2_id,
   });
 
+  const { data: allPlayers = [] } = useQuery<Player[]>({
+    queryKey: ['players', 'all'],
+    queryFn: () => playersApi.list({ limit: 100 }).then(r => r.data),
+  });
+  const speakText = useCallback((text: string) => {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    
+    const voices = window.speechSynthesis.getVoices();
+    
+    // 1. Try Google/Premium Hindi voice
+    let voice = voices.find(v => v.lang.includes('hi') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Premium')));
+    // 2. Try any Hindi voice
+    if (!voice) voice = voices.find(v => v.lang.includes('hi'));
+    // 3. Last resort: use default voice
+    if (!voice && voices.length > 0) voice = voices[0];
+    
+    if (voice) utterance.voice = voice;
+    utterance.lang = 'hi-IN'; // Force Hindi engine
+    utterance.rate = 1.05;
+    utterance.pitch = 1.1;
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
   const handleWs = useCallback((ev: WsEvent) => {
     if (ev.type === 'score_update') {
       qc.setQueryData(['match', actualId], ev.data);
@@ -67,6 +94,10 @@ export default function LiveMatchPage() {
         if (!old) return old;
         return { ...old, commentary: [ ...old.commentary, ev.data as Commentary ] };
       });
+      // Play audio if enabled
+      if (isAudioEnabled) {
+        speakText((ev.data as Commentary).ball_description);
+      }
     } else if (ev.type === 'wicket_update') {
       toast.error(`WICKET! Over ${ev.data.over}: ${ev.data.description}`);
       setLiveWicket(`OUT! ${ev.data.description}`);
@@ -100,6 +131,27 @@ export default function LiveMatchPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['match', actualId] }),
   });
 
+  const aiMutation = useMutation({
+    mutationFn: () => {
+      const getPlayerName = (id: string) => [...team1Roster, ...team2Roster, ...allPlayers].find(p => p.id === id)?.name || id;
+      return matchesApi.generateAiCommentary(actualId, {
+        batting_team: isTeam1Batting ? team1?.name : team2?.name,
+        bowling_team: isTeam1Batting ? team2?.name : team1?.name,
+        batter_name: getPlayerName(batterId),
+        bowler_name: getPlayerName(bowlerId),
+        runs,
+        is_wicket: isWicket,
+        over
+      });
+    },
+    onSuccess: (res) => {
+      setBallDesc(res.data.commentary);
+      toast.success('AI Commentary Generated!');
+      speakText(res.data.hindi_commentary || res.data.commentary);
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.detail ?? 'Failed to generate AI commentary'),
+  });
+
   const isOrganizer = hasRole('admin', 'organizer');
 
   if (isLoading) return <PageSkeleton />;
@@ -122,10 +174,10 @@ export default function LiveMatchPage() {
   const currentInning = match.current_innings === 1 ? i1 : i2;
   
   const getPlayerName = (id: string) => {
-    const p = [...team1Roster, ...team2Roster].find(player => player.id === id);
+    const p = [...team1Roster, ...team2Roster, ...allPlayers].find(player => player.id === id);
     return p ? p.name : id;
   };
-  
+
   // Decide who is batting vs bowling right now to populate the selects
   const isTeam1Batting = (match.current_innings === 1) 
     ? (match.toss_decision === 'bat' && match.toss_winner_id === match.team1_id) || (match.toss_decision === 'bowl' && match.toss_winner_id === match.team2_id) || (!match.toss_decision) 
@@ -135,9 +187,34 @@ export default function LiveMatchPage() {
   const bowlingRoster = isTeam1Batting ? team2Roster : team1Roster;
   const battingTeamName = isTeam1Batting ? team1?.name : team2?.name;
 
+  // Fallback for testing: if a team has no players assigned, let them pick from any player in the DB
+  const finalBattingRoster = battingRoster.length > 0 ? battingRoster : allPlayers;
+  const finalBowlingRoster = bowlingRoster.length > 0 ? bowlingRoster : allPlayers;
+
   return (
     <div className="fade-in">
-      <div className="page-header" style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+      <div className="page-header" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1 className="page-title" style={{ textAlign: 'left', margin: 0 }}>
+          {match.venue} 
+          <span style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginLeft: '1rem', fontWeight: 400 }}>
+            {match.stage} • {new Date(match.match_date).toLocaleDateString()}
+          </span>
+        </h1>
+        
+        <button 
+          onClick={() => {
+            if (!isAudioEnabled) speakText("लाइव ऑडियो कमेंट्री शुरू");
+            setIsAudioEnabled(!isAudioEnabled);
+          }}
+          className={`btn ${isAudioEnabled ? 'btn-primary' : 'btn-outline'}`}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+        >
+          {isAudioEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+          {isAudioEnabled ? 'Voice Commentary: ON' : 'Voice Commentary: OFF'}
+        </button>
+      </div>
+      
+      <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
         <div>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
             <span className={isLive ? 'badge badge-red badge-live' : 'badge badge-blue'}>
@@ -296,19 +373,32 @@ export default function LiveMatchPage() {
                     <label className="form-label">Batter (Striker)</label>
                     <select value={batterId} onChange={e => setBatterId(e.target.value)}>
                       <option value="">Select Batter</option>
-                      {battingRoster.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      {finalBattingRoster.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                   </div>
                   <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
                     <label className="form-label">Bowler</label>
                     <select value={bowlerId} onChange={e => setBowlerId(e.target.value)}>
                       <option value="">Select Bowler</option>
-                      {bowlingRoster.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      {finalBowlingRoster.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                   </div>
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Ball Description</label>
+                  <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Ball Description</span>
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        if (!batterId || !bowlerId) return toast.error('Select Batter and Bowler first');
+                        aiMutation.mutate();
+                      }}
+                      disabled={aiMutation.isPending}
+                      style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.85rem', fontWeight: 600 }}
+                    >
+                      <Sparkles size={14} /> {aiMutation.isPending ? 'Generating...' : 'Auto-Generate AI'}
+                    </button>
+                  </label>
                   <input
                     value={ballDesc}
                     onChange={e => setBallDesc(e.target.value)}
