@@ -61,7 +61,7 @@ async def list_players(
     country: str | None = None,
     team_id: str | None = None,
     page: int = 1,
-    limit: int = 20,
+    limit: int = 100,
 ):
     limit = max(1, min(100, limit))
     skip = (max(1, page) - 1) * limit

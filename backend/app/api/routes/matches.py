@@ -228,8 +228,75 @@ async def add_commentary(match_id: str, body: CommentaryCreate, current_user: Or
         if body.wicket:
             bowler.wickets += 1
 
+    # Auto-progression logic (All-out or Target Chased)
+    old_status = m.status
+    if m.status != MatchStatus.completed:
+        team1x = await Team.get(m.team1_id)
+        team2x = await Team.get(m.team2_id)
+        team1_name = team1x.name if team1x else m.team1_id
+        team2_name = team2x.name if team2x else m.team2_id
+
+        bat1_name = team1_name if m.innings1.batting_team_id == m.team1_id else team2_name
+        bat2_name = team2_name if m.innings1.batting_team_id == m.team1_id else team1_name
+
+        if m.current_innings == 1:
+            if m.innings1.wickets >= 10:
+                m.current_innings = 2
+        elif m.current_innings == 2:
+            target = m.innings1.runs + 1
+            if m.innings2.runs >= target:
+                m.status = MatchStatus.completed
+                m.winner_id = m.innings2.batting_team_id
+                wickets_left = 10 - m.innings2.wickets
+                m.result_description = f"{bat2_name} won by {wickets_left} wickets"
+            elif m.innings2.wickets >= 10:
+                m.status = MatchStatus.completed
+                if m.innings2.runs < m.innings1.runs:
+                    m.winner_id = m.innings1.batting_team_id
+                    run_diff = m.innings1.runs - m.innings2.runs
+                    m.result_description = f"{bat1_name} won by {run_diff} runs"
+                else:
+                    m.winner_id = None
+                    m.result_description = "Match Tied"
+
     m.updated_at = datetime.now(timezone.utc)
     await m.save()
+
+    # Trigger notifications if match automatically completed
+    if old_status != MatchStatus.completed and m.status == MatchStatus.completed:
+        t1 = await Team.get(m.team1_id)
+        t2 = await Team.get(m.team2_id)
+        owner_ids = [t.owner_id for t in (t1, t2) if t]
+        if m.winner_id:
+            winner_team = await Team.get(m.winner_id)
+            win_msg = f"Winner: {winner_team.name if winner_team else m.winner_id}"
+            win_html = f"<b>{winner_team.name if winner_team else 'N/A'}</b>"
+        else:
+            win_msg = "Match Tied"
+            win_html = "<b>Match Tied</b>"
+
+        for owner_id in owner_ids:
+            await notification_service.create(
+                user_id=owner_id,
+                notification_type=NotificationType.match_result,
+                title="Match result",
+                message=win_msg,
+                related_id=match_id,
+            )
+        if settings.SMTP_HOST:
+            for owner_id in owner_ids:
+                from app.models.user import User
+                u = await User.get(owner_id)
+                if u:
+                    try:
+                        await run_in_threadpool(
+                            send_email,
+                            to_email=u.email,
+                            subject="Match Result — BidWicket",
+                            html=f"<p>Hi {u.full_name},</p><p>Match completed! {win_html}.</p>",
+                        )
+                    except Exception:
+                        pass
 
     # Broadcast commentary to all viewers
     payload = {"type": "commentary_update", "data": entry.model_dump()}

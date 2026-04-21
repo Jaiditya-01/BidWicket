@@ -176,11 +176,25 @@ async def delete_auction(auction_id: str, current_user: OrganizerUser):
 
     # Use raw dict queries for reliable string-field matching across Beanie versions
     items = await AuctionItem.find({"auction_id": auction_id}).to_list()
+    now = datetime.now(timezone.utc)
     for item in items:
-        # Also delete each item's bids by item id
+        # Reverse item actions: refund budget and release player
+        if item.status == AuctionItemStatus.sold and item.winning_team_id:
+            team = await Team.get(item.winning_team_id)
+            if team:
+                restored_budget = team.remaining_budget + item.current_bid
+                new_players = [pid for pid in team.players if pid != item.player_id]
+                await team.set({"remaining_budget": restored_budget, "players": new_players, "updated_at": now})
+
+        reset_player = await Player.get(item.player_id)
+        if reset_player:
+            await reset_player.set({"team_id": None, "is_available": True, "updated_at": now})
+
+        # Delete each item's bids
         item_bids = await Bid.find({"auction_item_id": str(item.id)}).to_list()
         for bid in item_bids:
             await bid.delete()
+            
         await item.delete()
 
     # Delete any remaining bids by auction_id

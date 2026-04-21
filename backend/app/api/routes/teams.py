@@ -155,4 +155,11 @@ async def delete_team(team_id: str, current_user: TeamOwnerUser):
         raise HTTPException(status_code=404, detail="Team not found")
     if t.owner_id != str(current_user.id) and not any(r in current_user.roles for r in ("admin", "organizer")):
         raise HTTPException(status_code=403, detail="Not your team")
+
+    # Release players back into the auction pool BEFORE deleting the team
+    now = datetime.now(timezone.utc)
+    players = await Player.find(Player.team_id == team_id).to_list()
+    for p in players:
+        await p.set({"team_id": None, "is_available": True, "updated_at": now})
+
     await t.delete()
