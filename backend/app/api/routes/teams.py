@@ -6,17 +6,29 @@ from app.api.deps import CurrentUser, OrganizerUser, TeamOwnerUser
 from app.models.team import Team
 from app.models.player import Player
 from app.models.match import Match, MatchStatus
+from app.models.user import User
 from app.schemas.team import TeamCreate, TeamUpdate, TeamOut, TeamHistoryOut
 
 router = APIRouter(prefix="/teams", tags=["Teams"])
 
 
-def _out(t: Team) -> TeamOut:
+async def _out(t: Team) -> TeamOut:
+    owner_name = None
+    if t.owner_id:
+        try:
+            u = await User.get(t.owner_id)
+            if u:
+                owner_name = u.full_name
+        except Exception:
+            # owner_id may not be a valid ObjectId in some edge cases
+            owner_name = None
+
     return TeamOut(
         id=str(t.id),
         name=t.name,
         short_name=t.short_name,
         owner_id=t.owner_id,
+        owner_name=owner_name,
         tournament_id=t.tournament_id,
         budget=t.budget,
         remaining_budget=t.remaining_budget,
@@ -35,7 +47,7 @@ async def create_team(body: TeamCreate, current_user: TeamOwnerUser):
         remaining_budget=body.budget,
     )
     await team.insert()
-    return _out(team)
+    return await _out(team)
 
 
 @router.get("/", response_model=List[TeamOut])
@@ -44,7 +56,7 @@ async def list_teams(current_user: CurrentUser, tournament_id: str | None = None
     skip = (max(1, page) - 1) * limit
     query = Team.find_all() if not tournament_id else Team.find(Team.tournament_id == tournament_id)
     teams = await query.skip(skip).limit(limit).to_list()
-    return [_out(t) for t in teams]
+    return [await _out(t) for t in teams]
 
 
 @router.get("/{team_id}", response_model=TeamOut)
@@ -52,7 +64,7 @@ async def get_team(team_id: str, current_user: CurrentUser):
     t = await Team.get(team_id)
     if not t:
         raise HTTPException(status_code=404, detail="Team not found")
-    return _out(t)
+    return await _out(t)
 
 
 @router.get("/{team_id}/history", response_model=TeamHistoryOut)
@@ -96,7 +108,7 @@ async def add_player_to_team(team_id: str, player_id: str, current_user: TeamOwn
         raise HTTPException(status_code=400, detail="Player already in team")
     await t.set({"players": t.players + [player_id], "updated_at": datetime.now(timezone.utc)})
     await p.set({"team_id": team_id, "is_available": False, "updated_at": datetime.now(timezone.utc)})
-    return _out(t)
+    return await _out(t)
 
 
 @router.delete("/{team_id}/players/{player_id}", response_model=TeamOut)
@@ -114,7 +126,7 @@ async def remove_player_from_team(team_id: str, player_id: str, current_user: Te
     p = await Player.get(player_id)
     if p:
         await p.set({"team_id": None, "is_available": True, "updated_at": datetime.now(timezone.utc)})
-    return _out(t)
+    return await _out(t)
 
 
 @router.patch("/{team_id}", response_model=TeamOut)
@@ -133,12 +145,14 @@ async def update_team(team_id: str, body: TeamUpdate, current_user: TeamOwnerUse
             update_data["remaining_budget"] = max(0.0, t.remaining_budget + diff)
     update_data["updated_at"] = datetime.now(timezone.utc)
     await t.set(update_data)
-    return _out(t)
+    return await _out(t)
 
 
 @router.delete("/{team_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_team(team_id: str, current_user: OrganizerUser):
+async def delete_team(team_id: str, current_user: TeamOwnerUser):
     t = await Team.get(team_id)
     if not t:
         raise HTTPException(status_code=404, detail="Team not found")
+    if t.owner_id != str(current_user.id) and not any(r in current_user.roles for r in ("admin", "organizer")):
+        raise HTTPException(status_code=403, detail="Not your team")
     await t.delete()

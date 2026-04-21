@@ -53,7 +53,7 @@ function TeamModal({ onClose, existing }: { onClose: () => void; existing?: Team
 const fmt = (n: number) => n >= 10000000 ? `₹${(n / 10000000).toFixed(2)}Cr` : `₹${(n / 100000).toFixed(2)}L`;
 
 export default function TeamsPage() {
-  const { hasRole } = useAuth();
+  const { user, hasRole } = useAuth();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [modal, setModal] = useState<{ open: boolean; team?: Team }>({ open: false });
@@ -87,6 +87,7 @@ export default function TeamsPage() {
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>{t.name}</div>
                   {t.home_ground && <div className="text-muted text-sm">{t.home_ground}</div>}
+                  {t.owner_name && <div className="text-muted text-sm" style={{ marginTop: '0.2rem' }}>👤 Owned by: {t.owner_name}</div>}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
@@ -95,12 +96,12 @@ export default function TeamsPage() {
                 <span className="badge badge-gray">{t.players.length} players</span>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                {canEdit && (
+                {(hasRole('admin', 'organizer') || t.owner_id === user?.id) && (
                   <button className="btn btn-secondary btn-sm" onClick={() => setModal({ open: true, team: t })}>
                     <Pencil size={13} /> Edit
                   </button>
                 )}
-                {canEdit && (
+                {(hasRole('admin', 'organizer') || t.owner_id === user?.id) && (
                   <button className="btn btn-danger btn-sm" onClick={() => { if (confirm('Delete?')) deleteMutation.mutate(t.id); }}>
                     <Trash2 size={13} /> Delete
                   </button>

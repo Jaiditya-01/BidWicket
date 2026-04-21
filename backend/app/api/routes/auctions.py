@@ -168,6 +168,29 @@ async def reset_auction(auction_id: str, current_user: OrganizerUser):
     return _auction_out(a)
 
 
+@router.delete("/{auction_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_auction(auction_id: str, current_user: OrganizerUser):
+    a = await Auction.get(auction_id)
+    if not a:
+        raise HTTPException(status_code=404, detail="Auction not found")
+
+    # Use raw dict queries for reliable string-field matching across Beanie versions
+    items = await AuctionItem.find({"auction_id": auction_id}).to_list()
+    for item in items:
+        # Also delete each item's bids by item id
+        item_bids = await Bid.find({"auction_item_id": str(item.id)}).to_list()
+        for bid in item_bids:
+            await bid.delete()
+        await item.delete()
+
+    # Delete any remaining bids by auction_id
+    bids = await Bid.find({"auction_id": auction_id}).to_list()
+    for bid in bids:
+        await bid.delete()
+
+    await a.delete()
+
+
 # ── Auction Items ──────────────────────────────────────────────────────────────
 
 @router.post("/{auction_id}/items", response_model=AuctionItemOut, status_code=status.HTTP_201_CREATED)
@@ -295,6 +318,7 @@ async def place_bid(auction_id: str, item_id: str, body: PlaceBidRequest, curren
         user_id=str(current_user.id),
         team_id=body.team_id,
         amount=body.amount,
+        user_roles=current_user.roles,
     )
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result["message"])

@@ -25,6 +25,7 @@ class TeamOut(BaseModel):
     name: str
     short_name: Optional[str]
     owner_id: str
+    owner_name: Optional[str] = None
     tournament_id: Optional[str]
     budget: float
     remaining_budget: float

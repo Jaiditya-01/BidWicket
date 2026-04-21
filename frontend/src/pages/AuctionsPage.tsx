@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Gavel, Play, ExternalLink } from 'lucide-react';
+import { Plus, Gavel, Play, ExternalLink, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { auctionsApi, tournamentsApi } from '../services/api';
@@ -63,8 +63,15 @@ export default function AuctionsPage() {
   });
 
   const startMutation = useMutation({
-    mutationFn: (id: string) => auctionsApi.update(id, { status: 'live' }),
+    mutationFn: (id: string) => auctionsApi.startAuction(id),
     onSuccess: () => { toast.success('Auction is now LIVE 🔴'); qc.invalidateQueries({ queryKey: ['auctions'] }); },
+    onError: (e: any) => toast.error(e?.response?.data?.detail ?? 'Failed to start auction'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => auctionsApi.delete(id),
+    onSuccess: () => { toast.success('Auction deleted'); qc.invalidateQueries({ queryKey: ['auctions'] }); },
+    onError: (e: any) => toast.error(e?.response?.data?.detail ?? 'Failed to delete auction'),
   });
 
   const canEdit = hasRole('admin', 'organizer');
@@ -96,6 +103,11 @@ export default function AuctionsPage() {
                 {canEdit && a.status === 'upcoming' && (
                   <button className="btn btn-success btn-sm" onClick={() => startMutation.mutate(a.id)}>
                     <Play size={13} /> Go Live
+                  </button>
+                )}
+                {canEdit && (
+                  <button className="btn btn-danger btn-sm" onClick={() => { if(confirm('Delete this auction?')) deleteMutation.mutate(a.id); }}>
+                    <Trash2 size={13} /> Delete
                   </button>
                 )}
               </div>

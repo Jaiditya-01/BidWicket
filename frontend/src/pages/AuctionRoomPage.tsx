@@ -263,7 +263,9 @@ export default function AuctionRoomPage() {
                         style={{ maxWidth: 200, appearance: 'auto' }}
                       >
                         <option value="">Select your team</option>
-                        {myTeams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                        {myTeams
+                          .filter(t => !user || t.owner_id === user.id)
+                          .map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                       </select>
                       <button
                         className="btn btn-primary"

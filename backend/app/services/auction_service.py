@@ -68,6 +68,7 @@ class AuctionService:
         user_id: str,
         team_id: str,
         amount: float,
+        user_roles: list | None = None,
     ) -> dict:
         """
         Thread-safe bid placement.
@@ -81,8 +82,10 @@ class AuctionService:
             if item.status != AuctionItemStatus.active:
                 return {"success": False, "message": "Item is not currently active"}
 
-            if item.ends_at and datetime.now(timezone.utc) >= item.ends_at.replace(tzinfo=timezone.utc):
-                return {"success": False, "message": "Bidding time has ended"}
+            if item.ends_at:
+                ends_at_aware = item.ends_at if item.ends_at.tzinfo else item.ends_at.replace(tzinfo=timezone.utc)
+                if datetime.now(timezone.utc) >= ends_at_aware:
+                    return {"success": False, "message": "Bidding time has ended"}
 
             auction = await Auction.get(item.auction_id)
             if not auction:
@@ -106,7 +109,9 @@ class AuctionService:
             team = await Team.get(team_id)
             if not team:
                 return {"success": False, "message": "Team not found"}
-            if team.owner_id != user_id:
+            # Skip owner check for admin/organizer — they may own teams themselves
+            is_privileged = bool(user_roles and any(r in user_roles for r in ("admin", "organizer")))
+            if not is_privileged and str(team.owner_id).strip() != str(user_id).strip():
                 return {"success": False, "message": "You are not the owner of this team"}
             if team.remaining_budget < amount:
                 return {"success": False, "message": "Insufficient budget"}

@@ -38,6 +38,7 @@ export interface Team {
   name: string;
   short_name?: string;
   owner_id: string;
+  owner_name?: string;
   tournament_id?: string;
   budget: number;
   remaining_budget: number;

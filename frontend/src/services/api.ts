@@ -124,6 +124,7 @@ export const auctionsApi = {
     api.post(`/auctions/${auctionId}/items/${itemId}/bid`, body),
   listBids: (auctionId: string, itemId: string) =>
     api.get(`/auctions/${auctionId}/items/${itemId}/bids`),
+  delete: (id: string) => api.delete(`/auctions/${id}`),
 };
 
 // ── Notifications ─────────────────────────────────────────────────────────────
