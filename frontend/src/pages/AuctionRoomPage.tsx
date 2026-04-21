@@ -61,7 +61,7 @@ export default function AuctionRoomPage() {
 
   const { data: players = [] } = useQuery<Player[]>({
     queryKey: ['players'],
-    queryFn: () => playersApi.list().then(r => r.data),
+    queryFn: () => playersApi.list({ limit: 100 }).then(r => r.data),
   });
 
   // Set active item from auction state
@@ -332,7 +332,7 @@ export default function AuctionRoomPage() {
                   <option value="">Select player…</option>
                   {players
                     .filter(p => p.is_available && !items.find(i => i.player_id === p.id))
-                    .map(p => <option key={p.id} value={p.id}>{p.name} ({fmt(p.base_price)})</option>)
+                    .map(p => <option key={p.id} value={p.id}>{p.name} ({p.role.replace('_', ' ')}) - {fmt(p.base_price)}</option>)
                   }
                 </select>
                 <button
@@ -364,7 +364,7 @@ export default function AuctionRoomPage() {
                   }}>
                     <div>
                       <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{p?.name ?? 'Unknown'}</div>
-                      <div className="text-muted text-sm">{fmt(item.base_price)}</div>
+                      <div className="text-muted text-sm">{p?.role.replace('_', ' ')} · {fmt(item.base_price)}</div>
                     </div>
                     <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
                       <span className={

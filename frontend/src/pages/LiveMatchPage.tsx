@@ -43,6 +43,7 @@ export default function LiveMatchPage() {
   const [batterId, setBatterId] = useState('');         // on-strike batter
   const [nonStrikerId, setNonStrikerId] = useState('');
   const [bowlerId, setBowlerId] = useState('');
+  const [quickRuns, setQuickRuns] = useState(1);        // custom run input
 
   // Derived: bowler locked once an over has started (at least 1 ball bowled)
   const bowlerLocked = !!bowlerId && ballsInOver > 0;
@@ -123,11 +124,13 @@ export default function LiveMatchPage() {
 
   // ── Mutations (ALL hooks must come before ANY early return) ──────────────────
 
+  type BallOverride = { runs?: number; wicket?: boolean; desc?: string };
+
   const commentaryMutation = useMutation({
-    mutationFn: () => matchesApi.addCommentary(actualId, {
-      ball_description: ballDesc,
-      runs_scored: runs,
-      wicket: isWicket,
+    mutationFn: (override?: BallOverride) => matchesApi.addCommentary(actualId, {
+      ball_description: override?.desc ?? ballDesc,
+      runs_scored:      override?.runs   ?? runs,
+      wicket:           override?.wicket ?? isWicket,
       over: floatOver,
       batter_id: batterId || undefined,
       bowler_id: bowlerId || undefined,
@@ -244,8 +247,8 @@ export default function LiveMatchPage() {
   const bowlingRoster = isTeam1Batting ? team2Roster : team1Roster;
   const battingTeamName = isTeam1Batting ? team1?.name : team2?.name;
 
-  const rawBattingRoster = battingRoster.length > 0 ? battingRoster : allPlayers;
-  const rawBowlingRoster = bowlingRoster.length > 0 ? bowlingRoster : allPlayers;
+  const rawBattingRoster = battingRoster;
+  const rawBowlingRoster = bowlingRoster;
 
   // Bug 4: collect already-out player IDs from this innings
   const outPlayerIds = new Set(
@@ -319,6 +322,11 @@ export default function LiveMatchPage() {
               <div className="text-muted text-sm">
                 Over {i2 ? formatOvers(i2.overs) : i1 ? formatOvers(i1.overs) : '0.0'}
               </div>
+              {match.current_innings === 2 && i1 && (
+                <div className="text-muted text-sm" style={{ marginTop: '0.4rem', fontWeight: 700, color: 'var(--text)' }}>
+                  Target: {i1.runs + 1}
+                </div>
+              )}
             </div>
             <div style={{ textAlign: 'left', flex: 1 }}>
               <div className="fw-700" style={{ fontSize: '1.5rem' }}>{team2?.name || match.team2_id}</div>
@@ -464,9 +472,60 @@ export default function LiveMatchPage() {
               </div>
 
               <form
-                onSubmit={e => { e.preventDefault(); if (!ballDesc.trim()) return; commentaryMutation.mutate(); }}
+                onSubmit={e => { e.preventDefault(); if (!ballDesc.trim()) return; commentaryMutation.mutate(undefined); }}
                 style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}
               >
+                {/* ── Quick Score Controls ─────────────────────────────── */}
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.75rem', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', flexShrink: 0 }}>⚡ Quick:</span>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    disabled={!batterId || !bowlerId || commentaryMutation.isPending}
+                    onClick={() => commentaryMutation.mutate({ runs: 6, wicket: false, desc: `SIX! 🏏 ${getPlayerName(batterId)} hits it out of the park!` })}
+                  >🏏 6</button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    disabled={!batterId || !bowlerId || commentaryMutation.isPending}
+                    onClick={() => commentaryMutation.mutate({ runs: 4, wicket: false, desc: `FOUR! 🏏 ${getPlayerName(batterId)} finds the boundary!` })}
+                  >🏏 4</button>
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    style={{ background: 'var(--red)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.75rem', fontWeight: 600, cursor: 'pointer', opacity: (!batterId || !bowlerId || commentaryMutation.isPending) ? 0.5 : 1 }}
+                    disabled={!batterId || !bowlerId || commentaryMutation.isPending}
+                    onClick={() => commentaryMutation.mutate({ runs: 0, wicket: true, desc: `WICKET! 🏏 ${getPlayerName(batterId)} is OUT!` })}
+                  >🚨 Out</button>
+                  <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', marginLeft: 'auto' }}>
+                    <input
+                      id="quick-runs-input"
+                      type="number"
+                      min={0}
+                      max={7}
+                      step={1}
+                      value={quickRuns}
+                      onChange={e => setQuickRuns(Math.max(0, parseInt(e.target.value) || 0))}
+                      style={{ width: 64, textAlign: 'center' }}
+                      placeholder="Runs"
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      disabled={!batterId || !bowlerId || commentaryMutation.isPending}
+                      onClick={() => {
+                        if (!batterId || !bowlerId) return toast.error('Select Batter and Bowler first');
+                        const d = quickRuns === 0
+                          ? `Dot ball. ${getPlayerName(bowlerId)} beats the bat.`
+                          : quickRuns === 1
+                          ? `1 run. ${getPlayerName(batterId)} works it to the leg side.`
+                          : `${quickRuns} runs off the bat!`;
+                        commentaryMutation.mutate({ runs: quickRuns, wicket: false, desc: d });
+                        setQuickRuns(1);
+                      }}
+                    >▶ Submit Run</button>
+                  </div>
+                </div>
                 {/* ── Batters (striker + non-striker) + Swap Strike ──────── */}
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                   <div className="form-group" style={{ flex: 1, minWidth: 140, marginBottom: 0 }}>
@@ -581,7 +640,7 @@ export default function LiveMatchPage() {
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <button type="submit" className="btn btn-primary" disabled={commentaryMutation.isPending}>
+                  <button type="submit" className="btn btn-primary" disabled={commentaryMutation.isPending || !batterId || !bowlerId}>
                     {commentaryMutation.isPending ? 'Adding…' : '➕ Add Ball'}
                   </button>
                 </div>

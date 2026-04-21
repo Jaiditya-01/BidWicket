@@ -68,7 +68,7 @@ export default function PlayersPage() {
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('');
 
-  const { data: players = [], isLoading } = useQuery({ queryKey: ['players'], queryFn: () => playersApi.list().then(r => r.data) });
+  const { data: players = [], isLoading } = useQuery({ queryKey: ['players'], queryFn: () => playersApi.list({ limit: 100 }).then(r => r.data) });
   const { data: teams = [] } = useQuery<Team[]>({ queryKey: ['teams'], queryFn: () => teamsApi.list().then(r => r.data) });
   const teamMap = Object.fromEntries((teams as Team[]).map((t: Team) => [t.id, t.name]));
 

@@ -31,7 +31,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { data: tournaments } = useQuery({ queryKey: ['tournaments'], queryFn: () => tournamentsApi.list().then(r => r.data) });
   const { data: teams } = useQuery({ queryKey: ['teams'], queryFn: () => teamsApi.list().then(r => r.data) });
-  const { data: players } = useQuery({ queryKey: ['players'], queryFn: () => playersApi.list().then(r => r.data) });
+  const { data: players } = useQuery({ queryKey: ['players'], queryFn: () => playersApi.list({ limit: 100 }).then(r => r.data) });
   const { data: auctions } = useQuery({ queryKey: ['auctions'], queryFn: () => auctionsApi.list().then(r => r.data) });
   const { data: matches } = useQuery({ queryKey: ['matches'], queryFn: () => matchesApi.list().then(r => r.data) });
 
