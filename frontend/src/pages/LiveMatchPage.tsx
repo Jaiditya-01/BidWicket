@@ -250,19 +250,20 @@ export default function LiveMatchPage() {
   const rawBattingRoster = battingRoster;
   const rawBowlingRoster = bowlingRoster;
 
-  // Bug 4: collect already-out player IDs from this innings
+  // collect already-out player IDs from this innings
   const outPlayerIds = new Set(
     (currentInning?.batters ?? []).filter(b => b.is_out).map(b => b.player_id)
   );
 
+  const availableBatters = rawBattingRoster.filter(p => !outPlayerIds.has(p.id));
+  
   // Bug 1 + Bug 4: role-filter AND exclude out batsmen
-  const filteredBatters = rawBattingRoster.filter(
-    p => BATTER_ROLES.has(p.role) && !outPlayerIds.has(p.id)
-  );
+  const filteredBatters = availableBatters.filter(p => BATTER_ROLES.has(p.role));
+  
   // Fallback: if role filter empties the list (e.g. no roles assigned), just exclude out players
-  const safeBatters = filteredBatters.length > 0
-    ? filteredBatters
-    : rawBattingRoster.filter(p => !outPlayerIds.has(p.id));
+  const safeBatters = filteredBatters.length > 0 ? filteredBatters : availableBatters;
+
+  const isAllOut = safeBatters.length < 2 && match.current_innings === 1;
 
   // Bug 1: role-filter bowlers
   const filteredBowlers = rawBowlingRoster.filter(p => BOWLER_ROLES.has(p.role));
@@ -296,10 +297,11 @@ export default function LiveMatchPage() {
       <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
         <div>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-            <span className={isLive ? 'badge badge-red badge-live' : 'badge badge-blue'}>
+            <span className={isLive ? 'badge badge-red badge-live' : match.status === 'completed' ? 'badge badge-green' : 'badge badge-blue'}>
               {isLive && <Radio size={12} />} {match.status.toUpperCase()}
             </span>
             <span className="badge badge-accent">{match.stage.toUpperCase()}</span>
+            {match.status === 'completed' && <span className="badge badge-gold">🏆 MATCH FINISHED</span>}
             {isLive && (currentInning?.batting_team_id || currentInning?.team_id) && (
               <span className="badge badge-gray">{battingTeamName} Batting (Innings {match.current_innings})</span>
             )}
@@ -457,194 +459,218 @@ export default function LiveMatchPage() {
           </div>
 
           {/* ── Commentary input form (organizer only) ─────────────────────── */}
-          {isLive && isOrganizer && (
+          {isOrganizer && (
             <div className="card" style={{ marginTop: '1.5rem' }}>
-              {/* Bug 3: over/ball status header */}
-              <div className="card-header">
-                <div className="card-title">📝 Add Ball Commentary</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span className="badge badge-blue">Over {currentOver}</span>
-                  <span className="badge badge-gray">Ball {ballsInOver}/6</span>
-                  {bowlerLocked && (
-                    <span className="badge badge-accent" style={{ fontSize: '0.7rem' }}>🔒 Bowler Locked</span>
-                  )}
-                </div>
-              </div>
-
-              <form
-                onSubmit={e => { e.preventDefault(); if (!ballDesc.trim()) return; commentaryMutation.mutate(undefined); }}
-                style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}
-              >
-                {/* ── Quick Score Controls ─────────────────────────────── */}
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.75rem', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', flexShrink: 0 }}>⚡ Quick:</span>
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-sm"
-                    disabled={!batterId || !bowlerId || commentaryMutation.isPending}
-                    onClick={() => commentaryMutation.mutate({ runs: 6, wicket: false, desc: `SIX! 🏏 ${getPlayerName(batterId)} hits it out of the park!` })}
-                  >🏏 6</button>
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    disabled={!batterId || !bowlerId || commentaryMutation.isPending}
-                    onClick={() => commentaryMutation.mutate({ runs: 4, wicket: false, desc: `FOUR! 🏏 ${getPlayerName(batterId)} finds the boundary!` })}
-                  >🏏 4</button>
-                  <button
-                    type="button"
-                    className="btn btn-sm"
-                    style={{ background: 'var(--red)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.75rem', fontWeight: 600, cursor: 'pointer', opacity: (!batterId || !bowlerId || commentaryMutation.isPending) ? 0.5 : 1 }}
-                    disabled={!batterId || !bowlerId || commentaryMutation.isPending}
-                    onClick={() => commentaryMutation.mutate({ runs: 0, wicket: true, desc: `WICKET! 🏏 ${getPlayerName(batterId)} is OUT!` })}
-                  >🚨 Out</button>
-                  <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', marginLeft: 'auto' }}>
-                    <input
-                      id="quick-runs-input"
-                      type="number"
-                      min={0}
-                      max={7}
-                      step={1}
-                      value={quickRuns}
-                      onChange={e => setQuickRuns(Math.max(0, parseInt(e.target.value) || 0))}
-                      style={{ width: 64, textAlign: 'center' }}
-                      placeholder="Runs"
-                    />
-                    <button
-                      type="button"
-                      className="btn btn-outline btn-sm"
-                      disabled={!batterId || !bowlerId || commentaryMutation.isPending}
-                      onClick={() => {
-                        if (!batterId || !bowlerId) return toast.error('Select Batter and Bowler first');
-                        const d = quickRuns === 0
-                          ? `Dot ball. ${getPlayerName(bowlerId)} beats the bat.`
-                          : quickRuns === 1
-                          ? `1 run. ${getPlayerName(batterId)} works it to the leg side.`
-                          : `${quickRuns} runs off the bat!`;
-                        commentaryMutation.mutate({ runs: quickRuns, wicket: false, desc: d });
-                        setQuickRuns(1);
-                      }}
-                    >▶ Submit Run</button>
-                  </div>
-                </div>
-                {/* ── Batters (striker + non-striker) + Swap Strike ──────── */}
-                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                  <div className="form-group" style={{ flex: 1, minWidth: 140, marginBottom: 0 }}>
-                    <label className="form-label">
-                      🏏 Striker
-                      {batterId && <span className="badge badge-green" style={{ fontSize: '0.65rem', marginLeft: 4 }}>On Strike</span>}
-                    </label>
-                    {/* Bug 1: role-filtered; Bug 4: out players excluded */}
-                    <select value={batterId} onChange={e => setBatterId(e.target.value)}>
-                      <option value="">Select Striker</option>
-                      {safeBatters
-                        .filter(p => p.id !== nonStrikerId)
-                        .map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                  </div>
-
-                  {/* Bug 3: Swap Strike button */}
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    style={{ marginBottom: '0.1rem', whiteSpace: 'nowrap', flexShrink: 0 }}
-                    disabled={!batterId && !nonStrikerId}
-                    title="Swap striker and non-striker"
-                    onClick={() => {
-                      const prev = batterId;
-                      setBatterId(nonStrikerId);
-                      setNonStrikerId(prev);
-                    }}
+              {match.status === 'completed' ? (
+                <div style={{ textAlign: 'center', padding: '2rem', background: 'rgba(245, 158, 11, 0.05)', border: '2px dashed var(--gold)', borderRadius: 'var(--radius-lg)' }}>
+                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏆</div>
+                  <h2 style={{ color: 'var(--gold)', marginBottom: '0.5rem' }}>Match Completed</h2>
+                  <p style={{ fontSize: '1.25rem', fontWeight: 700 }}>{match.result_description}</p>
+                  <button 
+                    className="btn btn-outline btn-sm" 
+                    style={{ marginTop: '1.5rem' }}
+                    onClick={() => window.location.reload()}
                   >
-                    <ArrowLeftRight size={14} /> Swap Strike
-                  </button>
-
-                  <div className="form-group" style={{ flex: 1, minWidth: 140, marginBottom: 0 }}>
-                    <label className="form-label">Non-Striker</label>
-                    {/* Bug 1 + Bug 4 applied to non-striker too */}
-                    <select value={nonStrikerId} onChange={e => setNonStrikerId(e.target.value)}>
-                      <option value="">Select Non-Striker</option>
-                      {safeBatters
-                        .filter(p => p.id !== batterId)
-                        .map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                {/* ── Bowler (Bug 3: locked mid-over) ──────────────────── */}
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">
-                    ⚾ Bowler
-                    {bowlerLocked
-                      ? <span className="text-muted text-sm" style={{ marginLeft: 6 }}>🔒 Locked until over ends ({6 - ballsInOver} ball{6 - ballsInOver !== 1 ? 's' : ''} left)</span>
-                      : <span className="text-muted text-sm" style={{ marginLeft: 6 }}>Select bowler for this over</span>
-                    }
-                  </label>
-                  {/* Bug 1: role-filtered; Bug 3: disabled mid-over */}
-                  <select
-                    value={bowlerId}
-                    onChange={e => setBowlerId(e.target.value)}
-                    disabled={bowlerLocked}
-                    style={{ opacity: bowlerLocked ? 0.65 : 1, cursor: bowlerLocked ? 'not-allowed' : 'pointer' }}
-                  >
-                    <option value="">Select Bowler</option>
-                    {safeBowlers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                </div>
-
-                {/* ── Ball description ──────────────────────────────────── */}
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Ball Description</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!batterId || !bowlerId) return toast.error('Select Batter and Bowler first');
-                        aiMutation.mutate();
-                      }}
-                      disabled={aiMutation.isPending}
-                      style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.85rem', fontWeight: 600 }}
-                    >
-                      <Sparkles size={14} /> {aiMutation.isPending ? 'Generating...' : 'Auto-Generate AI'}
-                    </button>
-                  </label>
-                  <input
-                    value={ballDesc}
-                    onChange={e => setBallDesc(e.target.value)}
-                    placeholder="e.g. Six! Dhoni hits it over mid-wicket!"
-                    required
-                  />
-                </div>
-
-                {/* ── Runs / Over display / Wicket ──────────────────────── */}
-                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                  <div className="form-group" style={{ flex: 1, minWidth: 80, marginBottom: 0 }}>
-                    <label className="form-label">Runs</label>
-                    <input type="number" min={0} max={6} value={runs} onChange={e => setRuns(+e.target.value)} />
-                  </div>
-                  {/* Bug 3: over is auto-managed — display only */}
-                  <div className="form-group" style={{ flex: 1, minWidth: 100, marginBottom: 0 }}>
-                    <label className="form-label">Over (auto)</label>
-                    <input
-                      type="text"
-                      value={formatOvers(floatOver)}
-                      readOnly
-                      style={{ opacity: 0.65, cursor: 'not-allowed', background: 'var(--bg-elevated)' }}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem', paddingBottom: '0.1rem' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', color: isWicket ? 'var(--red)' : 'var(--text-secondary)', fontWeight: 600 }}>
-                      <input type="checkbox" checked={isWicket} onChange={e => setIsWicket(e.target.checked)} />
-                      Wicket!
-                    </label>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <button type="submit" className="btn btn-primary" disabled={commentaryMutation.isPending || !batterId || !bowlerId}>
-                    {commentaryMutation.isPending ? 'Adding…' : '➕ Add Ball'}
+                    Refresh Dashboard
                   </button>
                 </div>
-              </form>
+              ) : isLive ? (
+                <>
+                  {/* Bug 3: over/ball status header */}
+                  <div className="card-header">
+                    <div className="card-title">📝 Add Ball Commentary</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span className="badge badge-blue">Over {currentOver}</span>
+                      <span className="badge badge-gray">Ball {ballsInOver}/6</span>
+                      {bowlerLocked && (
+                        <span className="badge badge-accent" style={{ fontSize: '0.7rem' }}>🔒 Bowler Locked</span>
+                      )}
+                      {safeBatters.length < 2 && (
+                        <span className="badge badge-red" style={{ fontSize: '0.7rem' }}>🚨 No more batters available!</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <form
+                    onSubmit={e => { e.preventDefault(); if (!ballDesc.trim()) return; commentaryMutation.mutate(undefined); }}
+                    style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}
+                  >
+                    {/* ── Quick Score Controls ─────────────────────────────── */}
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.75rem', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+                      <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', flexShrink: 0 }}>⚡ Quick:</span>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        disabled={!batterId || !bowlerId || commentaryMutation.isPending}
+                        onClick={() => commentaryMutation.mutate({ runs: 6, wicket: false, desc: `SIX! 🏏 ${getPlayerName(batterId)} hits it out of the park!` })}
+                      >🏏 6</button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        disabled={!batterId || !bowlerId || commentaryMutation.isPending}
+                        onClick={() => commentaryMutation.mutate({ runs: 4, wicket: false, desc: `FOUR! 🏏 ${getPlayerName(batterId)} finds the boundary!` })}
+                      >🏏 4</button>
+                      <button
+                        type="button"
+                        className="btn btn-sm"
+                        style={{ background: 'var(--red)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.75rem', fontWeight: 600, cursor: 'pointer', opacity: (!batterId || !bowlerId || commentaryMutation.isPending) ? 0.5 : 1 }}
+                        disabled={!batterId || !bowlerId || commentaryMutation.isPending}
+                        onClick={() => commentaryMutation.mutate({ runs: 0, wicket: true, desc: `WICKET! 🏏 ${getPlayerName(batterId)} is OUT!` })}
+                      >🚨 Out</button>
+                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', marginLeft: 'auto' }}>
+                        <input
+                          id="quick-runs-input"
+                          type="number"
+                          min={0}
+                          max={7}
+                          step={1}
+                          value={quickRuns}
+                          onChange={e => setQuickRuns(Math.max(0, parseInt(e.target.value) || 0))}
+                          style={{ width: 64, textAlign: 'center' }}
+                          placeholder="Runs"
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-sm"
+                          disabled={!batterId || !bowlerId || commentaryMutation.isPending}
+                          onClick={() => {
+                            if (!batterId || !bowlerId) return toast.error('Select Batter and Bowler first');
+                            const d = quickRuns === 0
+                              ? `Dot ball. ${getPlayerName(bowlerId)} beats the bat.`
+                              : quickRuns === 1
+                              ? `1 run. ${getPlayerName(batterId)} works it to the leg side.`
+                              : `${quickRuns} runs off the bat!`;
+                            commentaryMutation.mutate({ runs: quickRuns, wicket: false, desc: d });
+                            setQuickRuns(1);
+                          }}
+                        >▶ Submit Run</button>
+                      </div>
+                    </div>
+                    {/* ── Batters (striker + non-striker) + Swap Strike ──────── */}
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                      <div className="form-group" style={{ flex: 1, minWidth: 140, marginBottom: 0 }}>
+                        <label className="form-label">
+                          🏏 Striker
+                          {batterId && <span className="badge badge-green" style={{ fontSize: '0.65rem', marginLeft: 4 }}>On Strike</span>}
+                        </label>
+                        {/* Bug 1: role-filtered; Bug 4: out players excluded */}
+                        <select value={batterId} onChange={e => setBatterId(e.target.value)}>
+                          <option value="">Select Striker</option>
+                          {safeBatters
+                            .filter(p => p.id !== nonStrikerId)
+                            .map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                      </div>
+
+                      {/* Bug 3: Swap Strike button */}
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        style={{ marginBottom: '0.1rem', whiteSpace: 'nowrap', flexShrink: 0 }}
+                        disabled={!batterId && !nonStrikerId}
+                        title="Swap striker and non-striker"
+                        onClick={() => {
+                          const prev = batterId;
+                          setBatterId(nonStrikerId);
+                          setNonStrikerId(prev);
+                        }}
+                      >
+                        <ArrowLeftRight size={14} /> Swap Strike
+                      </button>
+
+                      <div className="form-group" style={{ flex: 1, minWidth: 140, marginBottom: 0 }}>
+                        <label className="form-label">Non-Striker</label>
+                        {/* Bug 1 + Bug 4 applied to non-striker too */}
+                        <select value={nonStrikerId} onChange={e => setNonStrikerId(e.target.value)}>
+                          <option value="">Select Non-Striker</option>
+                          {safeBatters
+                            .filter(p => p.id !== batterId)
+                            .map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* ── Bowler (Bug 3: locked mid-over) ──────────────────── */}
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">
+                        ⚾ Bowler
+                        {bowlerLocked
+                          ? <span className="text-muted text-sm" style={{ marginLeft: 6 }}>🔒 Locked until over ends ({6 - ballsInOver} ball{6 - ballsInOver !== 1 ? 's' : ''} left)</span>
+                          : <span className="text-muted text-sm" style={{ marginLeft: 6 }}>Select bowler for this over</span>
+                        }
+                      </label>
+                      {/* Bug 1: role-filtered; Bug 3: disabled mid-over */}
+                      <select
+                        value={bowlerId}
+                        onChange={e => setBowlerId(e.target.value)}
+                        disabled={bowlerLocked}
+                        style={{ opacity: bowlerLocked ? 0.65 : 1, cursor: bowlerLocked ? 'not-allowed' : 'pointer' }}
+                      >
+                        <option value="">Select Bowler</option>
+                        {safeBowlers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                    </div>
+
+                    {/* ── Ball description ──────────────────────────────────── */}
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Ball Description</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!batterId || !bowlerId) return toast.error('Select Batter and Bowler first');
+                            aiMutation.mutate();
+                          }}
+                          disabled={aiMutation.isPending}
+                          style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.85rem', fontWeight: 600 }}
+                        >
+                          <Sparkles size={14} /> {aiMutation.isPending ? 'Generating...' : 'Auto-Generate AI'}
+                        </button>
+                      </label>
+                      <input
+                        value={ballDesc}
+                        onChange={e => setBallDesc(e.target.value)}
+                        placeholder="e.g. Six! Dhoni hits it over mid-wicket!"
+                        required
+                      />
+                    </div>
+
+                    {/* ── Runs / Over display / Wicket ──────────────────────── */}
+                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                      <div className="form-group" style={{ flex: 1, minWidth: 80, marginBottom: 0 }}>
+                        <label className="form-label">Runs</label>
+                        <input type="number" min={0} max={6} value={runs} onChange={e => setRuns(+e.target.value)} />
+                      </div>
+                      {/* Bug 3: over is auto-managed — display only */}
+                      <div className="form-group" style={{ flex: 1, minWidth: 100, marginBottom: 0 }}>
+                        <label className="form-label">Over (auto)</label>
+                        <input
+                          type="text"
+                          value={formatOvers(floatOver)}
+                          readOnly
+                          style={{ opacity: 0.65, cursor: 'not-allowed', background: 'var(--bg-elevated)' }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem', paddingBottom: '0.1rem' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', color: isWicket ? 'var(--red)' : 'var(--text-secondary)', fontWeight: 600 }}>
+                          <input type="checkbox" checked={isWicket} onChange={e => setIsWicket(e.target.checked)} />
+                          Wicket!
+                        </label>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <button type="submit" className="btn btn-primary" disabled={commentaryMutation.isPending || !batterId || !bowlerId}>
+                        {commentaryMutation.isPending ? 'Adding…' : '➕ Add Ball'}
+                      </button>
+                    </div>
+                  </form>
+                </>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-secondary)' }}>
+                  Match is not live. Start the match to add commentary.
+                </div>
+              )}
             </div>
           )}
         </div>

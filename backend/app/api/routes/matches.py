@@ -228,36 +228,49 @@ async def add_commentary(match_id: str, body: CommentaryCreate, current_user: Or
         if body.wicket:
             bowler.wickets += 1
 
-    # Auto-progression logic (All-out or Target Chased)
-    old_status = m.status
-    if m.status != MatchStatus.completed:
-        team1x = await Team.get(m.team1_id)
-        team2x = await Team.get(m.team2_id)
-        team1_name = team1x.name if team1x else m.team1_id
-        team2_name = team2x.name if team2x else m.team2_id
+        # Auto-progression logic (All-out or Target Chased)
+        old_status = m.status
+        if m.status != MatchStatus.completed:
+            team1x = await Team.get(m.team1_id)
+            team2x = await Team.get(m.team2_id)
+            team1_name = team1x.name if team1x else m.team1_id
+            team2_name = team2x.name if team2x else m.team2_id
 
-        bat1_name = team1_name if m.innings1.batting_team_id == m.team1_id else team2_name
-        bat2_name = team2_name if m.innings1.batting_team_id == m.team1_id else team1_name
+            bat1_team_id = m.innings1.batting_team_id
+            bat2_team_id = m.innings2.batting_team_id if m.innings2 else (m.team2_id if bat1_team_id == m.team1_id else m.team1_id)
+            
+            bat1_name = team1_name if bat1_team_id == m.team1_id else team2_name
+            bat2_name = team2_name if bat1_team_id == m.team1_id else team1_name
 
-        if m.current_innings == 1:
-            if m.innings1.wickets >= 10:
-                m.current_innings = 2
-        elif m.current_innings == 2:
-            target = m.innings1.runs + 1
-            if m.innings2.runs >= target:
-                m.status = MatchStatus.completed
-                m.winner_id = m.innings2.batting_team_id
-                wickets_left = 10 - m.innings2.wickets
-                m.result_description = f"{bat2_name} won by {wickets_left} wickets"
-            elif m.innings2.wickets >= 10:
-                m.status = MatchStatus.completed
-                if m.innings2.runs < m.innings1.runs:
-                    m.winner_id = m.innings1.batting_team_id
-                    run_diff = m.innings1.runs - m.innings2.runs
-                    m.result_description = f"{bat1_name} won by {run_diff} runs"
-                else:
-                    m.winner_id = None
-                    m.result_description = "Match Tied"
+            # Dynamic All-Out check (need total players in team)
+            from app.models.player import Player
+            
+            async def get_team_max_wickets(team_id):
+                count = await Player.find(Player.team_id == str(team_id)).count()
+                return max(1, count - 1) if count > 0 else 10 # Default to 10 if no players found
+
+            if m.current_innings == 1:
+                max_w = await get_team_max_wickets(bat1_team_id)
+                if m.innings1.wickets >= max_w:
+                    m.current_innings = 2
+            elif m.current_innings == 2:
+                target = m.innings1.runs + 1
+                max_w = await get_team_max_wickets(bat2_team_id)
+                
+                if m.innings2.runs >= target:
+                    m.status = MatchStatus.completed
+                    m.winner_id = bat2_team_id
+                    wickets_left = (max_w + 1) - m.innings2.wickets
+                    m.result_description = f"{bat2_name} won by {wickets_left} wickets"
+                elif m.innings2.wickets >= max_w:
+                    m.status = MatchStatus.completed
+                    if m.innings2.runs < m.innings1.runs:
+                        m.winner_id = bat1_team_id
+                        run_diff = m.innings1.runs - m.innings2.runs
+                        m.result_description = f"{bat1_name} won by {run_diff} runs"
+                    else:
+                        m.winner_id = None
+                        m.result_description = "Match Tied"
 
     m.updated_at = datetime.now(timezone.utc)
     await m.save()
