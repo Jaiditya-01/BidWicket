@@ -7,6 +7,7 @@ from pydantic import Field
 
 
 class AuctionStatus(str, Enum):
+    # for status in dashboard
     upcoming = "upcoming"
     live = "live"
     paused = "paused"

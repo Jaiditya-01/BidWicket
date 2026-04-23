@@ -39,7 +39,7 @@ if settings.ENVIRONMENT != "development":
     if allowed_hosts:
         app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
-# ── CORS ───────────────────────────────────────────────────────────────────────
+# ──- CORS ───────────────────────────────────────────────────────────────────────
 origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
