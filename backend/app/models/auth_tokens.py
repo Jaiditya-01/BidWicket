@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from beanie import Document, Indexed
-from pydantic import Field
+from pydantic import Field # data analytics
 
 
 class EmailVerificationToken(Document):

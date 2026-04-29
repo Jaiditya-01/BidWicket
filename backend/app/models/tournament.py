@@ -14,7 +14,7 @@ class TournamentType(str, Enum):
     odi = "odi"
     test = "test"
 
-
+# status of the Tournament in the Tournament and Dashboard when Live (Ongoing)
 class TournamentStatus(str, Enum):
     upcoming = "upcoming"
     ongoing = "ongoing"

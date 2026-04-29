@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from beanie import Document, Indexed
-from pydantic import Field
+from pydantic import Field # data analyzsis
 
 
 class ActivityLog(Document):

@@ -15,7 +15,7 @@ class Team(Document):
     logo_url: Optional[str] = None
     home_ground: Optional[str] = None
     players: list[str] = []  # list of Player ids
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc)) # fix date and time issue
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     class Settings:
